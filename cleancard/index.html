@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jail Roster Viewer - Clean Card Style</title>
+<style>
+  :root {
+    --color-bg-light: #f9f9f9;
+    --color-bg-dark: #121212;
+    --color-text-light: #222;
+    --color-text-dark: #eee;
+    --color-primary: #800000;
+    --color-primary-light: #b34040;
+    --color-border: #ccc;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    background-color: var(--color-bg-light);
+    color: var(--color-text-light);
+    transition: background-color 0.3s, color 0.3s;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  body.dark {
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
+  h1 {
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 960px;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+  }
+  select, input[type="text"], button {
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    outline-offset: 2px;
+    transition: border-color 0.2s;
+  }
+  select:focus, input[type="text"]:focus, button:focus {
+    border-color: var(--color-primary);
+    outline: none;
+  }
+  #searchField {
+    min-width: 150px;
+  }
+  #searchBar {
+    min-width: 280px;
+    flex-grow: 1;
+  }
+  #sortField {
+    min-width: 200px;
+  }
+  #dateRangeStart, #dateRangeEnd {
+    min-width: 140px;
+  }
+  #exportBtn {
+    cursor: pointer;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+  }
+  #exportBtn:hover {
+    background-color: var(--color-primary-light);
+  }
+  #darkModeToggle {
+    cursor: pointer;
+    background: none;
+    border: 1.5px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  #darkModeToggle:hover {
+    background-color: var(--color-primary-light);
+    color: white;
+  }
+  #roster {
+    max-width: 960px;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    min-height: 200px;
+    position: relative;
+  }
+  #loadingSpinner {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+  .inmate-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(128,0,0,0.15);
+    border: 1px solid var(--color-border);
+    padding: 16px 18px 16px 20px;
+    max-width: 320px;
+    width: 100%;
+    box-sizing: border-box;
+    color: var(--color-text-light);
+    transition: background-color 0.3s, color 0.3s;
+  }
+  body.dark .inmate-card {
+    background: #1f1f1f;
+    border-color: #444;
+    color: var(--color-text-dark);
+  }
+  .photo {
+    float: right;
+    width: 110px;
+    height: 140px;
+    object-fit: cover;
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    margin-left: 12px;
+    margin-bottom: 8px;
+  }
+  h2 {
+    margin-top: 0;
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+  p {
+    margin: 4px 0;
+    font-size: 0.9rem;
+  }
+  .label {
+    font-weight: 700;
+  }
+  .charges-container {
+    margin-top: 6px;
+  }
+  .charge-item {
+    margin-left: 10px;
+    font-size: 0.85rem;
+    position: relative;
+    padding-left: 1.1em;
+  }
+  .charge-item::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+    font-size: 1em;
+    line-height: 1;
+    top: 0;
+  }
+  .charge-toggle {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--color-primary);
+    cursor: pointer;
+    user-select: none;
+  }
+  .charge-toggle:hover {
+    text-decoration: underline;
+  }
+  /* Pagination */
+  .pagination {
+    margin: 15px 0 40px 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pagination button {
+    background: none;
+    border: 1.5px solid var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 40px;
+  }
+  .pagination button:hover:not(:disabled) {
+    background-color: var(--color-primary-light);
+    color: white;
+  }
+  .pagination button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  /* Highlighting search terms */
+  mark {
+    background: #ffcc00;
+    color: black;
+    font-weight: 700;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  /* Responsive */
+  @media (max-width: 600px) {
+    .controls-container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    #searchBar {
+      min-width: auto;
+      width: 100%;
+    }
+    .inmate-card {
+      max-width: 100%;
+    }
+    .photo {
+      float: none;
+      display: block;
+      margin: 0 auto 12px auto;
+      width: 100px;
+      height: 120px;
+    }
+  }
+</style>
+</head>
+<body>
+<h1>Spartanburg County Jail Roster</h1>
+<div class="controls-container" role="search" aria-label="Filter and search roster">
+  <select id="searchField" aria-label="Select search field">
+    <option value="name">Name</option>
+    <option value="booking">Booking #</option>
+    <option value="address">Address</option>
+    <option value="charges">Charges</option>
+  </select>
+  <input type="text" id="searchBar" placeholder="Search..." aria-label="Search roster" />
+  <label for="dateRangeStart" style="display:none;">Booking start date</label>
+  <input type="date" id="dateRangeStart" aria-label="Booking date from" title="Booking date from" />
+  <label for="dateRangeEnd" style="display:none;">Booking end date</label>
+  <input type="date" id="dateRangeEnd" aria-label="Booking date to" title="Booking date to" />
+  <select id="sortField" aria-label="Select sorting order">
+    <option value="nameAsc">Name (A → Z)</option>
+    <option value="nameDesc">Name (Z → A)</option>
+    <option value="dateAsc">Booking Date (oldest first)</option>
+    <option value="dateDesc" selected>Booking Date (newest first)</option>
+  </select>
+  <button id="exportBtn" aria-label="Export filtered roster to CSV">Export CSV</button>
+  <button id="darkModeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+</div>
+<div id="roster" aria-live="polite" aria-busy="false"></div>
+<div id="loadingSpinner" role="status" aria-live="assertive" style="display:none;">Loading...</div>
+<div class="pagination" aria-label="Pagination controls" role="navigation"></div>
+<script>
+  function fullName(inmate) {
+    return [inmate.nf, inmate.nm, inmate.nl].filter(Boolean).join(' ');
+  }
+  function parseBookingDate(inmate) {
+    const raw = inmate.bd;
+    if (!raw) return null;
+    const match = raw.match(/^(\d{2}):(\d{2}):(\d{2}) (\d{2})\/(\d{2})\/(\d{2})$/);
+    if (!match) return null;
+    const [, hh, mm, ss, month, day, year] = match;
+    const fullYear = parseInt(year, 10) + 2000;
+    return {
+      year: fullYear,
+      month: parseInt(month, 10),
+      day: parseInt(day, 10),
+      date: new Date(fullYear, parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hh), parseInt(mm), parseInt(ss))
+    };
+  }
+  function parseYMD(str) {
+    if (!str) return null;
+    const [year, month, day] = str.split('-').map(Number);
+    return {year, month, day};
+  }
+  function compareYMD(a, b) {
+    if (a.year !== b.year) return a.year - b.year;
+    if (a.month !== b.month) return a.month - b.month;
+    return a.day - b.day;
+  }
+
+  let inmatesData = [];
+  let filteredData = [];
+  let currentPage = 1;
+  const pageSize = 20;
+
+  async function fetchRoster() {
+    const rosterDiv = document.getElementById('roster');
+    const spinner = document.getElementById('loadingSpinner');
+    rosterDiv.innerHTML = '';
+    spinner.style.display = 'block';
+    rosterDiv.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch('https://corsproxy.io/?http://www.spartanburgsheriff.org/bookings/jailrostera.xml');
+      if (!response.ok) throw new Error('Network response not OK');
+      const text = await response.text();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, 'text/xml');
+      const inmatesXML = xmlDoc.getElementsByTagName('in');
+      inmatesData = [];
+      for (let i=0; i < inmatesXML.length; i++) {
+        const inmate = inmatesXML[i];
+        const getText = (tag) => {
+          const el = inmate.getElementsByTagName(tag)[0];
+          return el ? el.textContent.trim() : '';
+        };
+        const getAttr = (tag, attr) => {
+          const el = inmate.getElementsByTagName(tag)[0];
+          return el ? el.getAttribute(attr) || '' : '';
+        };
+        const charges = [];
+        const ar = inmate.getElementsByTagName('ar');
+        for (let a=0; a < ar.length; a++) {
+          const ofs = ar[a].getElementsByTagName('of');
+          for (let j=0; j < ofs.length; j++) {
+            const ol = ofs[j].getElementsByTagName('ol')[0]?.textContent || '';
+            const oc = ofs[j].getElementsByTagName('oc')[0]?.textContent || '';
+            if (ol) charges.push(`${ol} (${oc})`);
+          }
+        }
+        inmatesData.push({
+          nf: getText('nf'),
+          nm: getText('nm'),
+          nl: getText('nl'),
+          dob: getText('dob'),
+          racegen: getText('racegen'),
+          bn: getText('bn'),
+          street: getText('street'),
+          csz: getText('csz'),
+          bd: getText('bd'),
+          img: getAttr('image1', 'src'),
+          charges,
+        });
+      }
+    } catch (err) {
+      rosterDiv.innerHTML = `<p style="color:red;">Failed to load roster: ${err.message}</p>`;
+      inmatesData = [];
+    } finally {
+      spinner.style.display = 'none';
+      rosterDiv.setAttribute('aria-busy', 'false');
+    }
+  }
+
+  function renderRoster() {
+    const rosterDiv = document.getElementById('roster');
+    rosterDiv.innerHTML = '';
+    if (filteredData.length === 0) {
+      rosterDiv.innerHTML = '<p>No matching records found.</p>';
+      return;
+    }
+    const startIndex = (currentPage -1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageData = filteredData.slice(startIndex, endIndex);
+    for (const inmate of pageData) {
+      const chargesToShow = inmate.charges.slice(0,3);
+      const hasMoreCharges = inmate.charges.length > 3;
+      const searchTerm = document.getElementById('searchBar').value.trim();
+      const searchField = document.getElementById('searchField').value;
+      const highlightedName = fullName(inmate); // No highlight
+      const highlightedBooking = inmate.bn; // No highlight
+      const highlightedAddress = `${inmate.street}, ${inmate.csz}`; // No highlight
+      const highlightedCharges = inmate.charges; // No highlight
+      const bookingDateObj = parseBookingDate(inmate);
+      const bookingDateStr = bookingDateObj ? bookingDateObj.date.toLocaleString() : inmate.bd || 'Unknown';
+      const chargesHtml = chargesToShow.map((chg, idx) => `<div class="charge-item">${highlightedCharges[idx]}</div>`).join('');
+      const chargesToggleHtml = hasMoreCharges
+        ? `<div class="charge-toggle" tabindex="0" role="button" aria-pressed="false" aria-label="Show more charges">Show more charges ▼</div>`
+        : '';
+      const card = document.createElement('div');
+      card.className = 'inmate-card';
+      card.innerHTML = `
+        ${inmate.img ? `<img class="photo" src="${inmate.img}" alt="Mugshot of ${fullName(inmate)}" loading="lazy">` : ''}
+        <h2>${highlightedName}</h2>
+        <p><span class="label">DOB:</span> ${inmate.dob || 'Unknown'}</p>
+        <p><span class="label">Race/Gender:</span> ${inmate.racegen || 'Unknown'}</p>
+        <p><span class="label">Booking #:</span> ${highlightedBooking}</p>
+        <p><span class="label">Booking Date:</span> ${bookingDateStr}</p>
+        <p><span class="label">Address:</span> ${highlightedAddress}</p>
+        <div><span class="label">Charges:</span>
+          <div class="charges-container">
+            ${chargesHtml}
+            ${chargesToggleHtml}
+          </div>
+        </div>
+      `;
+      if (hasMoreCharges) {
+        const toggleBtn = card.querySelector('.charge-toggle');
+        let expanded = false;
+        toggleBtn.addEventListener('click', () => {
+          expanded = !expanded;
+          if (expanded) {
+            toggleBtn.setAttribute('aria-pressed', 'true');
+            toggleBtn.textContent = 'Show fewer charges ▲';
+            const fullChargesHtml = inmate.charges.map(chg => `<div class="charge-item">${chg}</div>`).join('');
+            toggleBtn.previousElementSibling.innerHTML = fullChargesHtml;
+          } else {
+            toggleBtn.setAttribute('aria-pressed', 'false');
+            toggleBtn.textContent = 'Show more charges ▼';
+            toggleBtn.previousElementSibling.innerHTML = chargesHtml;
+          }
+        });
+        toggleBtn.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleBtn.click();
+          }
+        });
+      }
+      rosterDiv.appendChild(card);
+    }
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const paginationDiv = document.querySelector('.pagination');
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    if (totalPages <= 1) return;
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '‹ Prev';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderRoster();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+    });
+    paginationDiv.appendChild(prevBtn);
+    const maxPagesToShow = 7;
+    let startPage = Math.max(1, currentPage - 3);
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow -1);
+    if (endPage - startPage < maxPagesToShow -1) {
+      startPage = Math.max(1, endPage - maxPagesToShow +1);
+    }
+    if (startPage > 1) {
+      const firstPageBtn = document.createElement('button');
+      firstPageBtn.textContent = '1';
+      firstPageBtn.addEventListener('click', () => {
+        currentPage = 1;
+        renderRoster();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      paginationDiv.appendChild(firstPageBtn);
+      if (startPage > 2) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.style.padding = '6px 10px';
+        paginationDiv.appendChild(dots);
+      }
+    }
+    for(let i = startPage; i <= endPage; i++) {
+      const pageBtn = document.createElement('button');
+      pageBtn.textContent = i;
+      if (i === currentPage) {
+        pageBtn.disabled = true;
+        pageBtn.style.fontWeight = 'bold';
+      }
+      pageBtn.addEventListener('click', () => {
+        currentPage = i;
+        renderRoster();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      paginationDiv.appendChild(pageBtn);
+    }
+    if (endPage < totalPages) {
+      if (endPage < totalPages -1) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.style.padding = '6px 10px';
+        paginationDiv.appendChild(dots);
+      }
+      const lastPageBtn = document.createElement('button');
+      lastPageBtn.textContent = totalPages;
+      lastPageBtn.addEventListener('click', () => {
+        currentPage = totalPages;
+        renderRoster();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      paginationDiv.appendChild(lastPageBtn);
+    }
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'Next ›';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderRoster();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+    });
+    paginationDiv.appendChild(nextBtn);
+  }
+
+  function applyFilters() {
+    const searchTermRaw = document.getElementById('searchBar').value.trim().toLowerCase();
+    const searchField = document.getElementById('searchField').value;
+    const dateStartVal = document.getElementById('dateRangeStart').value;
+    const dateEndVal = document.getElementById('dateRangeEnd').value;
+    const sortValue = document.getElementById('sortField').value;
+    const startYMD = parseYMD(dateStartVal);
+    const endYMD = parseYMD(dateEndVal);
+
+    filteredData = inmatesData.filter(inmate => {
+      const booking = parseBookingDate(inmate);
+      if (!booking) return false;
+      if (startYMD && compareYMD(booking, startYMD) < 0) return false;
+      if (endYMD && compareYMD(booking, endYMD) > 0) return false;
+      if (searchField === 'name') {
+        const name = fullName(inmate).toLowerCase();
+        const words = name.split(/\s+/);
+        // Strict: only match if any word starts with the search term
+        return words.some(word => word.startsWith(searchTermRaw));
+      } else if (searchField === 'booking') {
+        return inmate.bn.toLowerCase().includes(searchTermRaw);
+      } else if (searchField === 'address') {
+        const address = (inmate.street + ' ' + inmate.csz).toLowerCase();
+        return address.includes(searchTermRaw);
+      } else if (searchField === 'charges') {
+        return inmate.charges.some(chg => chg.toLowerCase().includes(searchTermRaw));
+      }
+      return true;
+    });
+
+    filteredData.sort((a,b) => {
+      if (sortValue === 'nameAsc') {
+        return fullName(a).localeCompare(fullName(b));
+      }
+      if (sortValue === 'nameDesc') {
+        return fullName(b).localeCompare(fullName(a));
+      }
+      if (sortValue === 'dateAsc') {
+        const da = parseBookingDate(a)?.date;
+        const db = parseBookingDate(b)?.date;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+      }
+      if (sortValue === 'dateDesc') {
+        const da = parseBookingDate(a)?.date;
+        const db = parseBookingDate(b)?.date;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return db - da;
+      }
+      return 0;
+    });
+    currentPage = 1;
+    renderRoster();
+  }
+
+  function exportCSV() {
+    if (filteredData.length === 0) {
+      alert('No data to export.');
+      return;
+    }
+    const rows = [
+      ['Name','DOB','Race/Gender','Booking #','Booking Date','Address','Charges']
+    ];
+    for (const inmate of filteredData) {
+      const chargesStr = inmate.charges.join('; ');
+      rows.push([
+        `"${fullName(inmate)}"`,
+        `"${inmate.dob}"`,
+        `"${inmate.racegen}"`,
+        `"${inmate.bn}"`,
+        `"${inmate.bd}"`,
+        `"${inmate.street}, ${inmate.csz}"`,
+        `"${chargesStr}"`
+      ]);
+    }
+    const csvContent = rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spartanburg_roster_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function updateDarkModeToggleBtn() {
+    const dark = document.body.classList.contains('dark');
+    const btn = document.getElementById('darkModeToggle');
+    if (dark) {
+      btn.textContent = '☀️';
+      btn.setAttribute('aria-label', 'Toggle light mode');
+      btn.setAttribute('title', 'Toggle light mode');
+    } else {
+      btn.textContent = '🌙';
+      btn.setAttribute('aria-label', 'Toggle dark mode');
+      btn.setAttribute('title', 'Toggle dark mode');
+    }
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark');
+    updateDarkModeToggleBtn();
+  }
+
+  function setupEventListeners() {
+    document.getElementById('searchBar').addEventListener('input', applyFilters);
+    document.getElementById('searchField').addEventListener('change', () => {
+      document.getElementById('searchBar').value = '';
+      applyFilters();
+    });
+    document.getElementById('dateRangeStart').addEventListener('change', applyFilters);
+    document.getElementById('dateRangeEnd').addEventListener('change', applyFilters);
+    document.getElementById('sortField').addEventListener('change', applyFilters);
+    document.getElementById('exportBtn').addEventListener('click', exportCSV);
+    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+  }
+  async function init() {
+    // Ensure light mode by default (remove .dark if present)
+    document.body.classList.remove('dark');
+    // Set default sort mode to Booking Date (newest first)
+    document.getElementById('sortField').value = 'dateDesc';
+    updateDarkModeToggleBtn();
+    await fetchRoster();
+    setupEventListeners();
+    applyFilters();
+  }
+  init();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Jail Roster Viewer - Clean Card Style</title>
+<title>Spartanburg County Jail Roster Viewer - Clean Card Style</title>
 <style>
   :root {
     --color-bg-light: #f9f9f9;
@@ -376,7 +376,7 @@
       const card = document.createElement('div');
       card.className = 'inmate-card';
       card.innerHTML = `
-        ${inmate.img ? `<img class="photo" src="${inmate.img}" alt="Mugshot of ${fullName(inmate)}" loading="lazy">` : ''}
+        ${inmate.img ? `<img class="photo" src="${inmate.img.startsWith('http') ? 'https://corsproxy.io/?' + inmate.img : inmate.img}" alt="Mugshot of ${fullName(inmate)}" loading="lazy">` : ''}
         <h2>${highlightedName}</h2>
         <p><span class="label">DOB:</span> ${inmate.dob || 'Unknown'}</p>
         <p><span class="label">Race/Gender:</span> ${inmate.racegen || 'Unknown'}</p>
